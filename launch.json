@@ -6,58 +6,12 @@
     "symbol": "BCLR",
     "decimals": 18
   },
-  "contracts": [
-    {
-      "contract": "WbtcUsdFeed",
-      "constructorArgs": [
-        "0xfdfd9c85ad200c506cf9e21f1fd8dd01932fbb23",
-        "0xf4030086522a5beea4988f8ca5b36dbc97bee88c",
-        "90000",
-        "7200"
-      ]
-    },
-    {
-      "contract": "FxSwapRouter",
-      "constructorArgs": [
-        "0xe592427a0aece92de3edee1f18e0157c05861564",
-        "0xb27308f9f90d607463bb33ea1bebb41c27ce5ab6",
-        "0x5018be882dcce5e3f2f3b0913ae2096b9b3fb61f",
-        "0x085780639cc2cacd35e474e71f4d000e2405d8f6",
-        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-      ]
-    },
-    {
-      "contract": "LoopConfig",
-      "constructorArgs": [
-        "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-        "0x085780639cc2cacd35e474e71f4d000e2405d8f6",
-        "0x64aa3364f17a4d01c6f1751fd97c2bd3d7e7f1d5",
-        "0x0ab87046fbb341d058f17cbc4c1133f25a20a52f",
-        "0xdc035d45d973e3ec169d2276ddab16f1e407384f",
-        "0x250893ca4ba5d05626c785e8da758026928fcd24",
-        "0xab709e26fa6b0a30c119d8c55b887ded24952473",
-        "0xdb591ea2e5db886da872654d58f6cc584b68e7cc",
-        "0xb63cac384247597756545b500253ff8e607a8020",
-        "$contract:FxSwapRouter",
-        "0xbbbbbbbbbb9cc5e90e3b3af64bdaf62c37eeffcb",
-        "$contract:WbtcUsdFeed",
-        "90000"
-      ]
-    },
-    {
-      "contract": "LoopAccountDeployer",
-      "constructorArgs": ["$contract:LoopConfig"]
-    },
-    {
-      "contract": "LoopReceipt",
-      "constructorArgs": ["$contract:LoopAccountDeployer"]
-    }
-  ],
+  "contracts": [],
   "pool": {
     "pairedCurrency": "0x0000000000000000000000000000000000000000",
     "fee": 3000,
     "tickSpacing": 60,
     "initialPrice": "79228162514264337593543950336"
   },
-  "notes": "Bitcoin Cooler: the separate BCLR launch token grants no claim on strategy assets. Deploy the five application contracts in the listed dependency order. LoopPosition accounts are created by LoopAccountDeployer when users create LoopReceipt positions, so no shared LoopPosition is deployed at launch. Application constructors configure immutable dependencies and grant no administrator role; there are no initialization calls or privileged wallet arguments. External addresses and freshness bounds reproduce the Ethereum reference snapshot at block 26070119 recorded in docs/deployment.md; they have not been reverified for a live deployment. These Ethereum addresses do not supply integrations on Sepolia. Constructors can succeed on an empty chain, but deposits require compatible deployed dependencies and passing runtime validation. The composite feed uses WBTC/BTC and BTC/USD with maximum ages of 90000 and 7200 seconds; LoopConfig allows 90000 seconds. External protocol governance, oracle freshness, liquidity, loan health and receipt ownership govern strategy operation; deployment success does not prove operational readiness. The launch pool pairs BCLR with native ETH, has no hook, and uses decimal sqrtPriceX96. The factory supplies liquidity and MerkleDistributor; effective opening pricing remains subject to launch policy."
+  "notes": "Bitcoin Cooler: token-only launch. LaunchToken (src/LaunchToken.sol) is the separate fixed-supply BCLR ERC-20: no constructor arguments, 18 decimals, exactly 1e27 minor units minted to its deployer, no mint, owner, pause, upgrade or admin path. It grants no claim on strategy assets. The factory supplies the LP position and the MerkleDistributor. The pool pairs BCLR with native ETH, fee 3000, tick spacing 60, no hook; initialPrice is decimal sqrtPriceX96 for a 1:1 legacy price and the effective opening price comes from the pinned launch policy. Why the contracts array is empty: the accepted tree contains five application contracts (WbtcUsdFeed, FxSwapRouter, LoopConfig, LoopAccountDeployer, LoopReceipt; LoopPosition is created per user at runtime). Every one of them binds immutable dependencies that exist only on Ethereum mainnet: WBTC, fxUSD, OHM, gOHM, USDS, USDC, the f(x) PoolManager and WBTC long pool, Olympus MonoCooler and staking, Uniswap V3 SwapRouter and Quoter V1, the Curve USDC/fxUSD pool, Morpho Blue and the Chainlink WBTC/BTC and BTC/USD feeds (docs/deployment.md, Ethereum block 26070119). The active launch policy deploys to Sepolia (chain 11155111). On 2026-09-28 eth_getCode on Sepolia returned empty code for WBTC 0x2260fac5..., fxUSD 0x08578063..., f(x) PoolManager 0x250893ca..., MonoCooler 0xdb591ea2..., Chainlink WBTC/BTC 0xfdfd9c85..., Uniswap V3 SwapRouter 0xe592427a... and Curve 0x5018be88...; only Morpho Blue has code. f(x) Protocol and Olympus Cooler have no Sepolia deployment, and the tree contains no Sepolia mocks, so no address set makes the application operate there. With the mainnet arguments the constructors succeed on an empty chain (test/Deployment.t.sol testLaunchSequenceOnEmptyChain) but LoopConfig.validate() reverts InvalidConfiguration, FxSwapRouter.validate() reverts 'missing dependency', WbtcUsdFeed.latestRoundData() reverts InvalidPrice and every LoopPosition.deposit() reverts before pulling funds. Nothing is upgradeable, so such a deployment could never be repaired. Instantiating five permanently inert contracts next to a trading BCLR pool would misrepresent launch readiness, so this manifest names only the token. Deploying the application on its supported chain requires a chain-1 launch policy with the recorded addresses reverified at the deployment block and a fork rehearsal of one deposit and close; that manifest would list, in order: WbtcUsdFeed(wbtcBtc, btcUsd, 90000, 7200); FxSwapRouter(v3Router, v3Quoter, curve, fxUSD, usdc); LoopConfig(wbtc, fxUSD, ohm, gohm, usds, manager, pool, cooler, staking, $contract:FxSwapRouter, morpho, $contract:WbtcUsdFeed, 90000); LoopAccountDeployer($contract:LoopConfig); LoopReceipt($contract:LoopAccountDeployer), with the address values from docs/deployment.md. None of them takes an owner or privileged wallet argument and none needs an initialization call. This manifest is descriptive; it does not authorize a deployment, change policy, or select a chain."
 }
