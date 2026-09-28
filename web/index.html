@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https: http://127.0.0.1:* http://localhost:*; img-src 'self' data:; object-src 'none'; base-uri 'self'">
+  <title>Bitcoin Cooler — position manager</title><link rel="stylesheet" href="style.css">
+  <script defer src="vendor/ethers.umd.min.js"></script><script defer src="abi.js"></script><script defer src="quotes.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header><a class="brand" href="./">◈ Bitcoin Cooler</a><button id="connect">Connect wallet</button></header>
+<main>
+  <section class="hero"><div class="eyebrow">WBTC × f(x) × Olympus</div><h1>A Bitcoin position.<br>Two credit facilities.</h1><p>Deposit a routable token, borrow fxUSD, acquire gOHM and reinvest Cooler credit into WBTC. Your receipt holds the rights to your isolated position.</p><div class="flow">Your token → WBTC → f(x) → OHM → gOHM → Cooler → WBTC</div></section>
+  <aside>Final f(x) LTV is capped at 33% at deposit. A WBTC top-up may be required. Both debts, market losses, fees and liquidation risk remain yours. This is unaudited software; no production deployment is configured.</aside>
+  <section class="card"><h2>Deployment & wallet</h2><div class="grid three">
+    <label>Expected chain ID<input id="chain" value="1" inputmode="numeric"></label>
+    <label>Receipt contract<input id="receiptAddress" placeholder="0x…" spellcheck="false"></label>
+    <label>Quote contract (optional)<input id="quoterAddress" placeholder="Defaults to configured bridge router" spellcheck="false"></label>
+  </div><div class="actions"><button id="load">Load deployment</button><button id="create" disabled>Create position receipt</button></div><p id="wallet" class="muted">Connect an EIP-1193 wallet. Every transaction requires your wallet confirmation.</p></section>
+  <section class="card"><h2>Your position</h2><div class="actions"><label>Receipt ID<input id="receiptId" value="1" inputmode="numeric"></label><button id="refresh" disabled>Load position</button></div><p id="accountAddress" class="mono"></p><div id="metrics" class="grid three"><div>WBTC in f(x)<strong>—</strong></div><div>f(x) debt / LTV<strong>—</strong></div><div>gOHM / Cooler debt<strong>—</strong></div></div><p id="owner" class="muted"></p></section>
+  <section class="grid two">
+    <article class="card"><h2>Add capital</h2><p>Every deposit runs the loop. Preview includes any extra WBTC required to stay below 33%.</p>
+      <label>Deposit token address<input id="inputToken" placeholder="Defaults to configured WBTC" spellcheck="false"></label><label>Amount<input id="inputAmount" placeholder="0.00" inputmode="decimal"></label>
+      <details><summary>Swap routes</summary><p>Enter forward paths as token address, fee, token address. Fee 0 denotes the fixed Curve fxUSD/USDC bridge; other hops use V3. Suggested routes must have live liquidity. No path is needed for WBTC → WBTC.</p>
+        <label>Deposit token → WBTC<input id="depositRoute" spellcheck="false"></label><label>fxUSD → OHM<input id="ohmRoute" spellcheck="false"></label><label>USDS → WBTC<input id="loopRoute" spellcheck="false"></label>
+      </details><button id="quoteDeposit" disabled>Preview deposit</button><pre id="depositPreview">Enter an amount to see the full loop.</pre><button id="deposit" disabled>Approve & deposit</button>
+    </article>
+    <article class="card"><h2>Unwind & withdraw</h2><p>Repay both debts, release collateral and receive the remainder. The quote includes protocol fees and current debt.</p>
+      <label>Receive token address<input id="outputToken" placeholder="Defaults to configured WBTC" spellcheck="false"></label><label>Optional USDS contribution<input id="exitTopUp" value="0" inputmode="decimal"></label>
+      <label class="check"><input type="checkbox" id="noFlash">Use my USDS instead of a flash loan</label>
+      <details><summary>Exit swap routes</summary><p>Enter all routes in forward order; exact-output encoding is handled automatically.</p>
+        <label>OHM → USDS<input id="exitOhmRoute" spellcheck="false"></label><label>USDS → fxUSD<input id="exitFxRoute" spellcheck="false"></label><label>WBTC → USDS<input id="exitDebtRoute" spellcheck="false"></label><label>WBTC → receive token<input id="exitOutputRoute" spellcheck="false"></label>
+      </details><button id="quoteClose" disabled>Preview withdrawal</button><pre id="closePreview">Your capital return depends on current prices.</pre><button id="close" disabled>Approve & unwind</button>
+    </article>
+  </section>
+  <section class="card"><h2>Position controls</h2><div class="grid three">
+    <div><label>Add WBTC without borrowing<input id="addWbtc" placeholder="0.00"></label><button id="addCollateral" disabled>Add collateral</button></div>
+    <div><label>Repay fxUSD debt<input id="repayFxAmount" placeholder="0.00"></label><button id="repayFx" disabled>Repay f(x)</button></div>
+    <div><label>Repay USDS debt<input id="repayUsdsAmount" placeholder="0.00"></label><button id="repayCooler" disabled>Repay Cooler</button></div>
+  </div><div class="grid two"><div><label>Transfer receipt to wallet<input id="newOwner" placeholder="0x…"></label><button id="transfer" disabled>Transfer all position rights</button></div><div><label>Recover idle token<input id="recoverToken" placeholder="0x…"></label><button id="recover" disabled>Recover idle balance</button></div></div></section>
+  <section class="card"><div class="grid two"><label>Slippage in basis points (100 = 1%)<input id="slippage" value="50" inputmode="numeric"></label><p class="muted">Quotes expire after 10 minutes and are invalidated when inputs, wallet or network change. Transactions are simulated after approvals.</p></div><p id="status" role="status" aria-live="polite">Ready. Load a reviewed deployment to begin.</p></section>
+</main><footer>Non-upgradeable application contracts · Transferable ERC-721 receipt · No application fees or administrator</footer>
+</body></html>

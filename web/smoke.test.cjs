@@ -1,0 +1,21 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+test('page mounts with local scripts and wires every action without a wallet',()=>{
+  const html=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
+  const ids=[...html.matchAll(/id="([^"]+)"/g)].map(m=>m[1]);
+  assert.equal(new Set(ids).size,ids.length);
+  const elements=Object.fromEntries(ids.map(id=>[id,{id,disabled:false,value:'',listeners:{},addEventListener(event,fn){this.listeners[event]=fn;},querySelectorAll(){return [];}}]));
+  const document={getElementById:id=>{assert(elements[id],`Missing element ${id}`);return elements[id];},querySelectorAll:()=>[]};
+  const ethers=require('./vendor/ethers.umd.min.js');
+  const window={ethers,LoopQuotes:require('./quotes.js')};
+  const context=vm.createContext({window,document,LOOP_ABI:{},console});
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'app.js'),'utf8'),context);
+  for(const id of ['connect','load','create','refresh','quoteDeposit','quoteClose','deposit','close','addCollateral','repayFx','repayCooler','transfer','recover']) assert.equal(typeof elements[id].listeners.click,'function',id);
+  assert.equal(elements.deposit.disabled,true);assert.equal(elements.close.disabled,true);assert.equal(elements.create.disabled,true);
+  assert.equal(elements.connect.disabled,false);
+  for(const match of html.matchAll(/<script[^>]+src="([^"]+)"/g)) assert(fs.existsSync(path.join(__dirname,match[1])),`Missing local script ${match[1]}`);
+  assert(!html.includes('src="https://'));
+});
